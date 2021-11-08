@@ -29,23 +29,6 @@ public class MicrophoneScript : MonoBehaviour
     void playMic()
     {
         audioSource.Play();
-        int sampleDataLength = 1024;
-        float clipLoudness;
-        float[] clipSampleData = new float[sampleDataLength];
-        
-        audioSource.clip.GetData(clipSampleData, audioSource.timeSamples);
-        clipLoudness = 0f;
-
-        foreach (var sample in clipSampleData)
-        {
-            clipLoudness += Mathf.Abs(sample);
-            Debug.Log(Mathf.Abs(sample));
-        }
-        
-        clipLoudness /= sampleDataLength;
-
-        if (clipLoudness > loudnessDetection)
-          GameManager.manager.loudClip();
     }
 
     void stopRecording()

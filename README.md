@@ -241,29 +241,7 @@ Como en el script de la cámara, declaramos los eventos a los que nos queremos s
   - stopRecording: Termina la grabación del micrófono si esta no ha llegado a su límite de tiempo.
 
 En la función `recordMic` obtenemos el componente de tipo AudioSource. Después guardamos en un array de tipo string todos los dispositivos. Para comenzar a grabar simplemente escribimos `audioSource.clip = Microphone.Start(deviceName, false, recordDuration, soundQuality)`, donde deviceName es el nombre del micrófono que queremos usar, *false* es que no queremos hacer un bucle en al grabación y recordDuration es el tiempo que le asigna el usuario de grabación, cuando termine el tiempo se cortará la grabación. Por último está soundQuality, que es un valor int de 44100. Para `stopRecording` simplemente llamamos al método estático de la clase *Microphone*: **End(deviceName)**.
-Por último se encuentra la función `playMic`, esta función es más compleja porque hace que si en el audio ha habido mucho ruido, el plano de la escena cambie. Para ello primero reproduce el audio con *audioSource.Play()*. Después creamos un array de floats con tamaño 1024, donde guardaremos los datos del clip de audio capturado. Usaremos *audioSource.clip.GetData(clipSampleData, audioSource.timeSamples)*. Una vez almacenados los samples en este array, lo recorreremos e iremos sumando el ruido escuchado a una variable float *clipLoudness*. Una vez sumado todo el ruido lo dividiremos por el valor total de samples que hay en el audio (1024). Si es mayor que el umbral definido por el usuario, activará la función *loudClip()* de GameManager, que se encargará de activar ese evento, al que el plano está suscrito, y hace que cambie de color. 
-
-Script del plano: 
-
-```c#
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
-public class ChangePlaneColor : MonoBehaviour
-{
-    void Start()
-    {
-        GameManager.eventLoudAudio += changeColor;
-    }
-
-    void changeColor()
-    {
-        Color newColor = new Color(Random.value, Random.value, Random.value, 1.0f);
-        GetComponent<Renderer>().material.color = newColor;
-    }
-}
-```
+Por último se encuentra la función `playMic`, que reproduce el clip grabado previamente.
 
 Por último veremos un ejemplo de botón para activar el micrófono, en este caso, para comenzar a grabar:  
 
