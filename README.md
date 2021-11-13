@@ -173,27 +173,40 @@ public class StartCameraButton : MonoBehaviour
 
 ## Micrófono
 
-Para interactuar con el micrófono se ofrece la misma interfaz que con la cámara, pero con ligeras variaciones en la implementación. También se crearon botones que veremos más adelante, y utiliza el GameManager como gestor de eventos, pero el objeto micrófono, es un objeto con el componente AudioSource, en el que se modifica y asigna el atributo clip, para que sea el clip capturado por el micrófono. El script de este objeto es el siguiente:  
+Para interactuar con el micrófono se ofrece la misma interfaz que con la cámara, pero con ligeras variaciones en la implementación, así como un patrón singleton añadido a las características de la clase. También se crearon botones que veremos más adelante, y utiliza el GameManager como gestor de eventos, pero el objeto micrófono, es un objeto con el componente AudioSource, en el que se modifica y asigna el atributo clip, para que sea el clip capturado por el micrófono. El script de este objeto es el siguiente:  
 
 ```c#
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Linq;
 
 public class MicrophoneScript : MonoBehaviour
 {
+    public static MicrophoneScript instance;
     private int soundQuality = 44100;
     public int recordDuration = 10;
     public float loudnessDetection;
     
     string deviceName;
     AudioSource audioSource;
+
+    public float[] spectrumWitdh;
+
     void Start()
     {
+        instance = this;
         GameManager.eventRecordMic += recordMic;
         GameManager.eventPlayMic += playMic;
         GameManager.eventStopRecordingMic += stopRecording;
+        spectrumWitdh = new float[64];
+    }
+
+    void FixedUpdate()
+    {   
+        if (audioSource != null)
+            audioSource.GetSpectrumData(spectrumWitdh, 0, FFTWindow.Blackman);
     }
 
     void recordMic()
@@ -205,31 +218,18 @@ public class MicrophoneScript : MonoBehaviour
     }
 
     void playMic()
-    {
+    { 
         audioSource.Play();
-        int sampleDataLength = 1024;
-        float clipLoudness;
-        float[] clipSampleData = new float[sampleDataLength];
-        
-        audioSource.clip.GetData(clipSampleData, audioSource.timeSamples);
-        clipLoudness = 0f;
-
-        foreach (var sample in clipSampleData)
-        {
-            clipLoudness += Mathf.Abs(sample);
-            Debug.Log(Mathf.Abs(sample));
-        }
-        
-        clipLoudness /= sampleDataLength;
-
-        Debug.Log(clipLoudness);
-        if (clipLoudness > loudnessDetection)
-          GameManager.manager.loudClip();
     }
 
     void stopRecording()
     {
         Microphone.End(deviceName);
+    }
+
+    public float getFrecuenciesDiapason(int start, int end, int mult)
+    {
+        return spectrumWitdh.ToList().GetRange(start, end).Average() * mult;
     }
 }
 ```
@@ -265,3 +265,40 @@ public class StartMicButton : MonoBehaviour
     }
 }
 ```
+
+Cuando se presiona el botón play, los cubos de la parte superior de la pantalla reaccionan al sonido que se está reproduciendo. Esto se consigue añadiéndoles el script shakeObjects. El efecto queda de la siguiente manera:  
+
+![soundReacting](./Gifs/SoundReact.gif)
+
+```c#
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ShakeObjects : MonoBehaviour
+{
+    public Transform objectReactingToBasses, objectReactingToNB, objectReactingToMiddles, objectReactingToHighs; 
+
+    [SerializeField] float t = 0.1f;
+
+    MicrophoneScript microphone;
+
+    void FixedUpdate()
+    {
+        makeObjectShakeScale();
+    }
+
+    void makeObjectShakeScale()
+    {
+        objectReactingToBasses.localScale = Vector3.Lerp(objectReactingToBasses.localScale, new Vector3(1, 1, MicrophoneScript.instance.getFrecuenciesDiapason(0, 7, 10)), t);
+
+        objectReactingToNB.localScale = Vector3.Lerp(objectReactingToNB.localScale, new Vector3(1, 1, MicrophoneScript.instance.getFrecuenciesDiapason(7, 15, 100)), t);
+
+        objectReactingToMiddles.localScale = Vector3.Lerp(objectReactingToMiddles.localScale, new Vector3(1, 1, MicrophoneScript.instance.getFrecuenciesDiapason(15, 30, 200)), t);
+
+        objectReactingToHighs.localScale = Vector3.Lerp(objectReactingToHighs.localScale, new Vector3(1, 1, MicrophoneScript.instance.getFrecuenciesDiapason(30, 32, 1000)), t);
+    }
+}
+```
+
+Este script actualiza en cada frame el tamaño de los cubos según las frecuencias del sonido que se está reproduciendo. Se le asignan cuatro objetos (Bass, Near Bass, Middles, High) que son cubos que representarán distintos rangos de frecuencias. A estos se les asigna una escala dependiendo la frecuencia. La frecuencia se obtiene con la función 'getFrequenciesDiapason', donde se encuentra el spectrumWidth, un array de float donde se almacenan los datos del spectro con `"audioSource.GetSpectrumData(spectrumWitdh, 0, FFTWindow.Blackman);"`. Una vez almacenado se encuentra la frecuencia media entre el rango proporcionado y por último se multiplica por el factor 'mult' para que la transformación sea proporcional en todas las frecuencias.
